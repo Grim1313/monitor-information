@@ -1,4 +1,4 @@
-Monitor Information 0.1.0
+Monitor Information 0.2.0
 
 This is a compact framework-dependent Windows x64 build.
 

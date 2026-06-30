@@ -46,6 +46,8 @@
   "field.physicalSize": "Tamano fisico",
   "field.gamma": "Gamma",
   "field.edidVersion": "Version EDID",
+  "field.preferredResolution": "Resolucion preferida",
+  "field.descriptorText": "Texto descriptor",
   "field.extensionBlocks": "Bloques de extension",
   "field.checksum": "Suma de comprobacion",
   "spec.provider": "Proveedor",

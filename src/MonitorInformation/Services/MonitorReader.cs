@@ -9,10 +9,13 @@ public sealed class MonitorReader
     private const int EnumCurrentSettings = -1;
     private const int DisplayDeviceAttachedToDesktop = 0x00000001;
     private const int DisplayDevicePrimaryDevice = 0x00000004;
+    private const uint EddGetDeviceInterfaceName = 0x00000001;
 
     public IReadOnlyList<MonitorInfo> GetActiveMonitors()
     {
         var monitors = new List<MonitorInfo>();
+        var registryEdids = ReadRegistryEdids();
+        var usedRegistryPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         for (uint adapterIndex = 0; ; adapterIndex++)
         {
@@ -38,19 +41,32 @@ public sealed class MonitorReader
                     break;
                 }
 
-                if (string.IsNullOrWhiteSpace(monitor.DeviceID))
+                var monitorInterface = CreateDisplayDevice();
+                EnumDisplayDevices(adapter.DeviceName, monitorIndex, ref monitorInterface, EddGetDeviceInterfaceName);
+
+                if (string.IsNullOrWhiteSpace(monitor.DeviceID) && string.IsNullOrWhiteSpace(monitorInterface.DeviceID))
                 {
                     continue;
                 }
 
                 adapterHadMonitor = true;
-                var edid = EdidParser.Parse(ReadEdid(monitor.DeviceID));
+                var deviceIds = new[] { monitor.DeviceID, monitorInterface.DeviceID }
+                    .Where(id => !string.IsNullOrWhiteSpace(id))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+                var edidEntry = FindEdid(deviceIds, mode, registryEdids, usedRegistryPaths);
+                var edid = edidEntry?.Edid;
+                if (edidEntry is not null)
+                {
+                    usedRegistryPaths.Add(edidEntry.RegistryPath);
+                }
+
                 monitors.Add(new MonitorInfo
                 {
                     DisplayName = FirstNonEmpty(edid?.DisplayName, monitor.DeviceString, adapter.DeviceString, adapter.DeviceName),
                     AdapterName = FirstNonEmpty(adapter.DeviceString, adapter.DeviceName),
                     DeviceName = FirstNonEmpty(monitor.DeviceString, monitor.DeviceName),
-                    DeviceId = monitor.DeviceID,
+                    DeviceId = FirstNonEmpty(monitor.DeviceID, monitorInterface.DeviceID),
                     IsPrimary = (adapter.StateFlags & DisplayDevicePrimaryDevice) != 0,
                     CurrentWidth = mode.Width,
                     CurrentHeight = mode.Height,
@@ -76,6 +92,67 @@ public sealed class MonitorReader
         }
 
         return monitors;
+    }
+
+    private static RegistryEdidEntry? FindEdid(
+        IReadOnlyList<string> deviceIds,
+        (int Width, int Height, int RefreshRate) mode,
+        IReadOnlyList<RegistryEdidEntry> registryEdids,
+        HashSet<string> usedRegistryPaths)
+    {
+        foreach (var deviceId in deviceIds)
+        {
+            var direct = EdidParser.Parse(ReadEdid(deviceId));
+            if (direct is not null)
+            {
+                return new RegistryEdidEntry("", "", "", direct);
+            }
+        }
+
+        var best = registryEdids
+            .Where(entry => !usedRegistryPaths.Contains(entry.RegistryPath))
+            .Select(entry => new ScoredRegistryEdid(entry, ScoreRegistryEdid(entry, deviceIds, mode)))
+            .OrderByDescending(entry => entry.Score)
+            .FirstOrDefault();
+
+        if (best is null)
+        {
+            return null;
+        }
+
+        if (best.Score >= 40 || registryEdids.Count(entry => !usedRegistryPaths.Contains(entry.RegistryPath)) == 1)
+        {
+            return best.Entry;
+        }
+
+        return null;
+    }
+
+    private static int ScoreRegistryEdid(
+        RegistryEdidEntry entry,
+        IReadOnlyList<string> deviceIds,
+        (int Width, int Height, int RefreshRate) mode)
+    {
+        var score = entry.Edid.ChecksumValid ? 20 : 0;
+        foreach (var deviceId in deviceIds)
+        {
+            if (deviceId.Contains(entry.DisplayKey, StringComparison.OrdinalIgnoreCase))
+            {
+                score += 100;
+            }
+
+            if (deviceId.Contains(entry.InstanceKey, StringComparison.OrdinalIgnoreCase))
+            {
+                score += 50;
+            }
+        }
+
+        if (entry.Edid.PreferredWidth == mode.Width && entry.Edid.PreferredHeight == mode.Height)
+        {
+            score += 35;
+        }
+
+        return score;
     }
 
     private static (int Width, int Height, int RefreshRate) GetDisplayMode(string deviceName)
@@ -108,6 +185,52 @@ public sealed class MonitorReader
         }
 
         return null;
+    }
+
+    private static IReadOnlyList<RegistryEdidEntry> ReadRegistryEdids()
+    {
+        var entries = new List<RegistryEdidEntry>();
+        const string displayRoot = @"SYSTEM\CurrentControlSet\Enum\DISPLAY";
+
+        try
+        {
+            using var root = Registry.LocalMachine.OpenSubKey(displayRoot);
+            if (root is null)
+            {
+                return entries;
+            }
+
+            foreach (var displayKey in root.GetSubKeyNames())
+            {
+                using var display = root.OpenSubKey(displayKey);
+                if (display is null)
+                {
+                    continue;
+                }
+
+                foreach (var instanceKey in display.GetSubKeyNames())
+                {
+                    var registryPath = $@"{displayRoot}\{displayKey}\{instanceKey}\Device Parameters";
+                    using var parameters = Registry.LocalMachine.OpenSubKey(registryPath);
+                    if (parameters?.GetValue("EDID") is not byte[] edidBytes)
+                    {
+                        continue;
+                    }
+
+                    var edid = EdidParser.Parse(edidBytes);
+                    if (edid is not null)
+                    {
+                        entries.Add(new RegistryEdidEntry(displayKey, instanceKey, registryPath, edid));
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Registry-wide EDID discovery is a best-effort fallback.
+        }
+
+        return entries;
     }
 
     private static IEnumerable<string> GetRegistryPaths(string deviceId)
@@ -220,4 +343,8 @@ public sealed class MonitorReader
         public uint dmPanningWidth;
         public uint dmPanningHeight;
     }
+
+    private sealed record RegistryEdidEntry(string DisplayKey, string InstanceKey, string RegistryPath, EdidInfo Edid);
+
+    private sealed record ScoredRegistryEdid(RegistryEdidEntry Entry, int Score);
 }

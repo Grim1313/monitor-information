@@ -11,6 +11,9 @@ public sealed class OnlineSpecsService
     {
         _providers =
         [
+            new PanelookSpecProvider(),
+            new YandexCachedPanelookProvider(),
+            new DuckDuckGoPanelSearchProvider(),
             new EnergyStarSpecProvider()
         ];
     }

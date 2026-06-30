@@ -3,6 +3,7 @@
 What's new:
 
 - Initial release
+- Online lookup can use ENERGY STAR and Panelook/DuckDuckGo snippets for panel IDs.
 
 Release asset:
 

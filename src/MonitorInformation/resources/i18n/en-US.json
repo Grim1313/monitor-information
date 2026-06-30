@@ -46,6 +46,8 @@
   "field.physicalSize": "Physical size",
   "field.gamma": "Gamma",
   "field.edidVersion": "EDID version",
+  "field.preferredResolution": "Preferred resolution",
+  "field.descriptorText": "Descriptor text",
   "field.extensionBlocks": "Extension blocks",
   "field.checksum": "Checksum",
   "spec.provider": "Provider",

@@ -26,6 +26,7 @@ public static class EdidParser
         ["NEC"] = "NEC",
         ["PHL"] = "Philips",
         ["SAM"] = "Samsung",
+        ["SDC"] = "Samsung Display",
         ["SEC"] = "Samsung",
         ["SNY"] = "Sony",
         ["VSC"] = "ViewSonic"
@@ -47,8 +48,15 @@ public static class EdidParser
 
         string? displayName = null;
         string? serialText = null;
+        string? descriptorText = null;
+        var preferred = (Width: 0, Height: 0);
         for (var offset = 54; offset <= 108; offset += 18)
         {
+            if (preferred.Width == 0 && (block[offset] != 0 || block[offset + 1] != 0))
+            {
+                preferred = DecodeDetailedTiming(block, offset);
+            }
+
             if (block[offset] != 0 || block[offset + 1] != 0 || block[offset + 2] != 0)
             {
                 continue;
@@ -62,6 +70,9 @@ public static class EdidParser
                     break;
                 case 0xFF:
                     serialText = text;
+                    break;
+                case 0xFE:
+                    descriptorText = text;
                     break;
             }
         }
@@ -82,9 +93,19 @@ public static class EdidParser
             HeightCentimeters = block[22],
             Gamma = block[23] == 0xFF ? null : (block[23] + 100) / 100.0,
             ExtensionBlocks = block[126],
-            DisplayName = displayName,
-            SerialNumberText = serialText
+            DisplayName = displayName ?? descriptorText,
+            SerialNumberText = serialText,
+            DescriptorText = descriptorText,
+            PreferredWidth = preferred.Width,
+            PreferredHeight = preferred.Height
         };
+    }
+
+    private static (int Width, int Height) DecodeDetailedTiming(byte[] block, int offset)
+    {
+        var width = block[offset + 2] | ((block[offset + 4] & 0xF0) << 4);
+        var height = block[offset + 5] | ((block[offset + 7] & 0xF0) << 4);
+        return (width, height);
     }
 
     private static bool IsChecksumValid(byte[] block)

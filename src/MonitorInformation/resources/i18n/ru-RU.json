@@ -46,6 +46,8 @@
   "field.physicalSize": "Физический размер",
   "field.gamma": "Гамма",
   "field.edidVersion": "Версия EDID",
+  "field.preferredResolution": "Предпочтительное разрешение",
+  "field.descriptorText": "Текстовый дескриптор",
   "field.extensionBlocks": "Блоки расширения",
   "field.checksum": "Контрольная сумма",
   "spec.provider": "Поставщик данных",

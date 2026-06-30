@@ -1,0 +1,145 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_VERSION: "10.0.x"
+  PROJECT_PATH: "src/MonitorInformation/MonitorInformation.csproj"
+  RUNTIME_IDENTIFIER: "win-x64"
+
+jobs:
+  build:
+    name: Build Windows x64 release
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Resolve release version
+        id: version
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_TYPE -eq "tag") {
+            $version = $env:GITHUB_REF_NAME.TrimStart("v")
+          } else {
+            [xml]$project = Get-Content $env:PROJECT_PATH
+            $version = $project.Project.PropertyGroup.Version
+          }
+
+          $publishDir = "dist/MonitorInformation-$version-$env:RUNTIME_IDENTIFIER"
+          $zipPath = "$publishDir.zip"
+          $fileVersion = "$version.0"
+
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "file_version=$fileVersion" >> $env:GITHUB_OUTPUT
+          "publish_dir=$publishDir" >> $env:GITHUB_OUTPUT
+          "zip_path=$zipPath" >> $env:GITHUB_OUTPUT
+
+      - name: Restore
+        run: dotnet restore $env:PROJECT_PATH
+
+      - name: Publish framework-dependent app
+        shell: pwsh
+        run: |
+          dotnet publish $env:PROJECT_PATH `
+            --configuration Release `
+            --runtime $env:RUNTIME_IDENTIFIER `
+            --self-contained false `
+            --output "${{ steps.version.outputs.publish_dir }}" `
+            -p:DebugType=None `
+            -p:DebugSymbols=false `
+            -p:Version="${{ steps.version.outputs.version }}" `
+            -p:AssemblyVersion="${{ steps.version.outputs.file_version }}" `
+            -p:FileVersion="${{ steps.version.outputs.file_version }}" `
+            -p:InformationalVersion="${{ steps.version.outputs.version }}"
+
+      - name: Sign binaries
+        shell: pwsh
+        env:
+          WINDOWS_SIGNING_CERT_BASE64: ${{ secrets.WINDOWS_SIGNING_CERT_BASE64 }}
+          WINDOWS_SIGNING_CERT_PASSWORD: ${{ secrets.WINDOWS_SIGNING_CERT_PASSWORD }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_CERT_BASE64)) {
+            Write-Warning "WINDOWS_SIGNING_CERT_BASE64 is not configured. Release binaries will be unsigned."
+            exit 0
+          }
+
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Recurse -Filter signtool.exe |
+            Where-Object { $_.FullName -match "\\x64\\signtool.exe$" } |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+
+          if (-not $signtool) {
+            throw "signtool.exe was not found on the runner."
+          }
+
+          $certPath = Join-Path $env:RUNNER_TEMP "windows-signing-cert.pfx"
+          [IO.File]::WriteAllBytes($certPath, [Convert]::FromBase64String($env:WINDOWS_SIGNING_CERT_BASE64))
+
+          $publishDir = "${{ steps.version.outputs.publish_dir }}"
+          $files = @(
+            Join-Path $publishDir "MonitorInformation.exe"
+            Join-Path $publishDir "MonitorInformation.dll"
+          )
+
+          foreach ($file in $files) {
+            & $signtool.FullName sign /fd SHA256 /f $certPath /p $env:WINDOWS_SIGNING_CERT_PASSWORD /tr http://timestamp.digicert.com /td SHA256 $file
+            if ($LASTEXITCODE -ne 0) {
+              throw "Signing failed for $file."
+            }
+          }
+
+      - name: Add release notes
+        id: notes
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $source = "packaging/release-notes-v$version.md"
+          $target = "dist/release-notes-v$version.md"
+
+          if (Test-Path $source) {
+            Copy-Item $source $target -Force
+          } else {
+            "# Monitor Information $version`n`nWhat's new:`n`n- Release $version" | Set-Content $target -Encoding UTF8
+          }
+
+          "path=$target" >> $env:GITHUB_OUTPUT
+
+      - name: Create archive
+        shell: pwsh
+        run: |
+          Compress-Archive `
+            -Path "${{ steps.version.outputs.publish_dir }}\*" `
+            -DestinationPath "${{ steps.version.outputs.zip_path }}" `
+            -Force
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: MonitorInformation-${{ steps.version.outputs.version }}-${{ env.RUNTIME_IDENTIFIER }}
+          path: ${{ steps.version.outputs.zip_path }}
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create $env:GITHUB_REF_NAME `
+            "${{ steps.version.outputs.zip_path }}" `
+            --title "Monitor Information ${{ steps.version.outputs.version }}" `
+            --notes-file "${{ steps.notes.outputs.path }}"

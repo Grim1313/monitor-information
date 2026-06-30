@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Interop;
 using System.Windows.Media;
 using MonitorInformation.Models;
@@ -183,6 +185,8 @@ public partial class MainWindow
         AddField(HardwareGrid, "field.manufactureDate", monitor.Edid?.ManufactureDateText ?? _localization.Text("value.unknown"));
         AddField(HardwareGrid, "field.gamma", monitor.Edid?.GammaText ?? _localization.Text("value.unknown"));
         AddField(HardwareGrid, "field.edidVersion", monitor.Edid?.VersionText ?? _localization.Text("value.unknown"));
+        AddField(HardwareGrid, "field.preferredResolution", monitor.Edid?.PreferredResolutionText ?? _localization.Text("value.unknown"));
+        AddField(HardwareGrid, "field.descriptorText", monitor.Edid?.DescriptorText ?? _localization.Text("value.unknown"));
         AddField(HardwareGrid, "field.extensionBlocks", monitor.Edid?.ExtensionBlocks.ToString(CultureInfo.CurrentCulture) ?? _localization.Text("value.unknown"));
 
         if (OnlineSpecsBox.IsChecked == true)
@@ -281,6 +285,41 @@ public partial class MainWindow
         };
         valueText.SetResourceReference(ForegroundProperty, "TextPrimaryBrush");
         stack.Children.Add(valueText);
+
+        border.Child = stack;
+        target.Children.Add(border);
+    }
+
+    private void AddLinkField(Panel target, string label, string url)
+    {
+        var border = new Border
+        {
+            Margin = new Thickness(0, 0, 10, 10),
+            Padding = new Thickness(12),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(7)
+        };
+        border.SetResourceReference(Border.BorderBrushProperty, "BorderStrongBrush");
+        border.SetResourceReference(Border.BackgroundProperty, "FieldBackgroundBrush");
+
+        var stack = new StackPanel();
+        var labelText = new TextBlock
+        {
+            Text = label,
+            FontSize = 12
+        };
+        labelText.SetResourceReference(ForegroundProperty, "TextSecondaryBrush");
+        stack.Children.Add(labelText);
+
+        var linkText = new TextBlock
+        {
+            Margin = new Thickness(0, 4, 0, 0),
+            TextWrapping = TextWrapping.Wrap
+        };
+        var hyperlink = new Hyperlink(new Run(url));
+        hyperlink.Click += (_, _) => OpenUrl(url);
+        linkText.Inlines.Add(hyperlink);
+        stack.Children.Add(linkText);
 
         border.Child = stack;
         target.Children.Add(border);
@@ -416,8 +455,7 @@ public partial class MainWindow
         AddField(SpecsGrid, "spec.provider", result.ProviderName);
         AddField(SpecsGrid, "spec.match", result.MatchSummary);
         AddField(SpecsGrid, "spec.confidence", $"{result.Confidence}/100");
-        AddField(SpecsGrid, "spec.source", result.SourceUrl);
-        AddField(SpecsGrid, "spec.retrievedAt", result.RetrievedAt.ToLocalTime().ToString("g", CultureInfo.CurrentCulture));
+        AddLinkField(SpecsGrid, _localization.Text("spec.source"), result.SourceUrl);
 
         foreach (var field in result.Fields)
         {
@@ -450,6 +488,18 @@ public partial class MainWindow
         _onlineLookupCancellation?.Cancel();
         _onlineLookupCancellation?.Dispose();
         _onlineLookupCancellation = null;
+    }
+
+    private static void OpenUrl(string url)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        catch
+        {
+            Clipboard.SetText(url);
+        }
     }
 
     private void CopyRawButton_Click(object sender, RoutedEventArgs e)

@@ -34,9 +34,19 @@ public sealed class EdidInfo
 
     public string? SerialNumberText { get; init; }
 
+    public string? DescriptorText { get; init; }
+
+    public int PreferredWidth { get; init; }
+
+    public int PreferredHeight { get; init; }
+
     public string ProductCodeHex => $"0x{ProductCode:X4}";
 
     public string VersionText => $"{EdidMajorVersion}.{EdidMinorVersion}";
+
+    public string? PreferredResolutionText => PreferredWidth > 0 && PreferredHeight > 0
+        ? $"{PreferredWidth} x {PreferredHeight}"
+        : null;
 
     public string? GammaText => Gamma.HasValue ? Gamma.Value.ToString("0.00") : null;
 

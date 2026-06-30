@@ -3,7 +3,7 @@
 Monitor Information is a lightweight open source Windows desktop application for
 viewing information about connected monitors.
 
-Current version: `0.1.0`.
+Current version: `0.2.0`.
 
 ## Features
 
@@ -15,8 +15,9 @@ Current version: `0.1.0`.
 - Shows current resolution, refresh rate, graphics adapter, and raw EDID hex.
 - Supports English (US), Russian, and Spanish interface languages.
 - Supports System, Light, and Dark themes.
-- Includes opt-in online lookup through the official ENERGY STAR Certified
-  Displays dataset.
+- Includes opt-in online lookup through ENERGY STAR and panel lookup sources.
+- Includes opt-in Panelook lookup for internal laptop panels such as
+  `ATNA56YX03-0`.
 - Keeps online lookup disabled by default.
 
 ## Requirements
@@ -34,28 +35,22 @@ Microsoft's runtime installation link before the app starts.
 
 ## Download And Run
 
-1. Download `MonitorInformation-0.1.0-win-x64.zip` from the GitHub Release.
+1. Download `MonitorInformation-0.2.0-win-x64.zip` from the GitHub Release.
 2. Extract the archive.
 3. Run `MonitorInformation.exe`.
 
 The app stores portable settings and online cache next to the executable when
 the folder is writable.
 
-## Version 0.1.0
+## Version 0.2.0
 
 What's new:
 
-- Initial release
-
-Implemented:
-
-- WPF GUI for Windows.
-- Local display enumeration through Win32 display APIs.
-- EDID registry fallback.
-- Raw EDID viewer with copy action.
-- Light and dark UI themes.
-- English (US), Russian, and Spanish UI resources.
-- Optional ENERGY STAR online specification lookup with a local 30-day cache.
+- Improved monitor detection, including better EDID matching from Windows.
+- Added optional online specs lookup for monitor and laptop panel models.
+- Improved laptop display support.
+- Refined light and dark themes.
+- Prepared automated GitHub release builds.
 
 Not implemented yet:
 
@@ -64,6 +59,24 @@ Not implemented yet:
 - Full UEFI PNP vendor catalog generator.
 - DisplayID and CTA extension decoding beyond base EDID metadata.
 - Signed installer or auto-update.
+
+## GitHub Releases
+
+Release builds are produced by GitHub Actions from tags named `v*.*.*`.
+
+The workflow builds a compact framework-dependent Windows x64 archive:
+
+- `MonitorInformation-<version>-win-x64.zip`
+
+Code signing is optional. If these repository secrets are configured, the
+workflow signs `MonitorInformation.exe` and `MonitorInformation.dll` before
+creating the archive:
+
+- `WINDOWS_SIGNING_CERT_BASE64` - base64-encoded PFX certificate.
+- `WINDOWS_SIGNING_CERT_PASSWORD` - PFX password.
+
+Without a trusted code-signing certificate, Windows 11 Smart App Control may
+block the app on some PCs.
 
 ## Build From Source
 
@@ -81,13 +94,13 @@ dotnet build MonitorInformation.slnx -c Release
 Publish a compact framework-dependent x64 build:
 
 ```powershell
-dotnet publish src\MonitorInformation\MonitorInformation.csproj -c Release -r win-x64 --self-contained false -o dist\MonitorInformation-0.1.0-win-x64
+dotnet publish src\MonitorInformation\MonitorInformation.csproj -c Release -r win-x64 --self-contained false -o dist\MonitorInformation-0.2.0-win-x64
 ```
 
 Create the release archive:
 
 ```powershell
-Compress-Archive -Path dist\MonitorInformation-0.1.0-win-x64\* -DestinationPath dist\MonitorInformation-0.1.0-win-x64.zip -Force
+Compress-Archive -Path dist\MonitorInformation-0.2.0-win-x64\* -DestinationPath dist\MonitorInformation-0.2.0-win-x64.zip -Force
 ```
 
 ## Architecture
