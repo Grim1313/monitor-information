@@ -1,4 +1,4 @@
-Monitor Information 0.2.1
+Monitor Information 0.2.2
 
 Monitor Information is a lightweight Windows application for viewing connected
 display information, local EDID data, and optional online monitor or panel

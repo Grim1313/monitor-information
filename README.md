@@ -33,7 +33,7 @@ Microsoft's runtime installation link before the app starts.
 
 ## Download And Run
 
-1. Download `MonitorInformation-0.2.1-win-x64.zip` from the GitHub Release.
+1. Download `MonitorInformation-0.2.2-win-x64.zip` from the GitHub Release.
 2. Extract the archive.
 3. Run `MonitorInformation.exe`.
 
@@ -85,13 +85,13 @@ dotnet build MonitorInformation.slnx -c Release
 Publish a compact framework-dependent x64 build:
 
 ```powershell
-dotnet publish src\MonitorInformation\MonitorInformation.csproj -c Release -r win-x64 --self-contained false -o dist\MonitorInformation-0.2.1-win-x64
+dotnet publish src\MonitorInformation\MonitorInformation.csproj -c Release -r win-x64 --self-contained false -o dist\MonitorInformation-0.2.2-win-x64
 ```
 
 Create the release archive:
 
 ```powershell
-Compress-Archive -Path dist\MonitorInformation-0.2.1-win-x64\* -DestinationPath dist\MonitorInformation-0.2.1-win-x64.zip -Force
+Compress-Archive -Path dist\MonitorInformation-0.2.2-win-x64\* -DestinationPath dist\MonitorInformation-0.2.2-win-x64.zip -Force
 ```
 
 ## Architecture
