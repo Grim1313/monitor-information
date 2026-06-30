@@ -52,6 +52,21 @@ public sealed class OnlineSpecCache
         }
     }
 
+    public void ClearAll()
+    {
+        try
+        {
+            if (Directory.Exists(_cachePath))
+            {
+                Directory.Delete(_cachePath, recursive: true);
+            }
+        }
+        catch
+        {
+            // Online cache is optional. Read-only portable folders should not block refresh.
+        }
+    }
+
     public static string CreateKey(MonitorIdentity identity)
     {
         var input = string.Join("|",

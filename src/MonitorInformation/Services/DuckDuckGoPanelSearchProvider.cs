@@ -135,7 +135,7 @@ public sealed class DuckDuckGoPanelSearchProvider : ISpecProvider
     private static HttpClient CreateHttpClient()
     {
         var client = new HttpClient();
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 MonitorInformation/0.1.0");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 MonitorInformation/0.2.1");
         client.DefaultRequestHeaders.AcceptLanguage.ParseAdd("en-US,en;q=0.9");
         return client;
     }

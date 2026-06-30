@@ -18,13 +18,16 @@ public sealed class OnlineSpecsService
         ];
     }
 
-    public async Task<OnlineSpecResult?> SearchAsync(MonitorIdentity identity, CancellationToken cancellationToken)
+    public async Task<OnlineSpecResult?> SearchAsync(MonitorIdentity identity, CancellationToken cancellationToken, bool forceRefresh = false)
     {
         var cacheKey = OnlineSpecCache.CreateKey(identity);
-        var cached = _cache.TryRead(cacheKey);
-        if (cached is not null)
+        if (!forceRefresh)
         {
-            return cached;
+            var cached = _cache.TryRead(cacheKey);
+            if (cached is not null)
+            {
+                return cached;
+            }
         }
 
         foreach (var provider in _providers)
@@ -38,6 +41,11 @@ public sealed class OnlineSpecsService
         }
 
         return null;
+    }
+
+    public void ClearCache()
+    {
+        _cache.ClearAll();
     }
 }
 

@@ -5,33 +5,6 @@ namespace MonitorInformation.Services;
 
 public static class EdidParser
 {
-    private static readonly IReadOnlyDictionary<string, string> KnownManufacturers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-    {
-        ["ACR"] = "Acer",
-        ["AOC"] = "AOC",
-        ["APP"] = "Apple",
-        ["AUO"] = "AU Optronics",
-        ["BNQ"] = "BenQ",
-        ["BOE"] = "BOE",
-        ["CMN"] = "Chimei Innolux",
-        ["DEL"] = "Dell",
-        ["EIZ"] = "EIZO",
-        ["GSM"] = "LG Electronics",
-        ["HWP"] = "HP",
-        ["IVM"] = "Iiyama",
-        ["LEN"] = "Lenovo",
-        ["LGD"] = "LG Display",
-        ["LPL"] = "LG Philips",
-        ["MSI"] = "MSI",
-        ["NEC"] = "NEC",
-        ["PHL"] = "Philips",
-        ["SAM"] = "Samsung",
-        ["SDC"] = "Samsung Display",
-        ["SEC"] = "Samsung",
-        ["SNY"] = "Sony",
-        ["VSC"] = "ViewSonic"
-    };
-
     public static EdidInfo? Parse(byte[]? edidBytes)
     {
         if (edidBytes is null || edidBytes.Length < 128)
@@ -82,7 +55,7 @@ public static class EdidParser
             RawBytes = block,
             ChecksumValid = IsChecksumValid(block),
             ManufacturerId = manufacturerId,
-            ManufacturerName = KnownManufacturers.TryGetValue(manufacturerId, out var name) ? name : manufacturerId,
+            ManufacturerName = ManufacturerDatabase.Resolve(manufacturerId),
             ProductCode = productCode,
             SerialNumber = serialNumber,
             ManufactureWeek = manufactureWeek,

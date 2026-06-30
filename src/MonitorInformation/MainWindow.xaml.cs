@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -22,7 +23,9 @@ public partial class MainWindow
 
     private AppSettings _settings = new();
     private bool _updatingUi;
+    private bool _suppressOnlineLookup;
     private CancellationTokenSource? _onlineLookupCancellation;
+    private const string LatestReleaseUrl = "https://github.com/Grim1313/monitor-information/releases/latest";
 
     public MainWindow()
     {
@@ -105,6 +108,11 @@ public partial class MainWindow
         ThemeLabel.Text = _localization.Text("label.theme");
         MonitorListLabel.Text = _localization.Text("label.connectedDisplays");
         RefreshButton.Content = _localization.Text("button.refresh");
+        VersionText.Text = _localization.Format("app.version", new Dictionary<string, string>
+        {
+            ["version"] = GetApplicationVersion()
+        });
+        CheckUpdateRun.Text = _localization.Text("link.checkUpdates");
         OnlineSpecsBox.Content = _localization.Text("online.specs");
         OnlineStatusText.Text = OnlineSpecsBox.IsChecked == true
             ? _localization.Text("online.ready")
@@ -126,35 +134,44 @@ public partial class MainWindow
         }
     }
 
-    private void RefreshMonitors()
+    private int RefreshMonitors(bool suppressOnlineLookup = false)
     {
         StatusText.Text = _localization.Text("status.loading");
         _monitors.Clear();
+        _suppressOnlineLookup = suppressOnlineLookup;
 
-        foreach (var monitor in _monitorReader.GetActiveMonitors())
+        try
         {
-            _monitors.Add(monitor);
-        }
+            foreach (var monitor in _monitorReader.GetActiveMonitors())
+            {
+                _monitors.Add(monitor);
+            }
 
-        if (_monitors.Count > 0)
-        {
-            MonitorList.SelectedIndex = 0;
+            if (_monitors.Count > 0)
+            {
+                MonitorList.SelectedIndex = 0;
+            }
+            else
+            {
+                SelectedNameText.Text = _localization.Text("empty.noDisplay");
+                OverviewGrid.Children.Clear();
+                HardwareGrid.Children.Clear();
+                SpecsGrid.Children.Clear();
+                RawEdidBox.Text = "";
+                AddField(OverviewGrid, "empty.noMonitors", _localization.Text("empty.noMonitors"));
+                AddField(SpecsGrid, "online.off", _localization.Text("online.off"));
+            }
         }
-        else
+        finally
         {
-            SelectedNameText.Text = _localization.Text("empty.noDisplay");
-            OverviewGrid.Children.Clear();
-            HardwareGrid.Children.Clear();
-            SpecsGrid.Children.Clear();
-            RawEdidBox.Text = "";
-            AddField(OverviewGrid, "empty.noMonitors", _localization.Text("empty.noMonitors"));
-            AddField(SpecsGrid, "online.off", _localization.Text("online.off"));
+            _suppressOnlineLookup = false;
         }
 
         StatusText.Text = _localization.Format("status.loaded", new Dictionary<string, string>
         {
             ["count"] = _monitors.Count.ToString(CultureInfo.CurrentCulture)
         });
+        return _monitors.Count;
     }
 
     private void RenderMonitor(MonitorInfo monitor)
@@ -189,7 +206,7 @@ public partial class MainWindow
         AddField(HardwareGrid, "field.descriptorText", monitor.Edid?.DescriptorText ?? _localization.Text("value.unknown"));
         AddField(HardwareGrid, "field.extensionBlocks", monitor.Edid?.ExtensionBlocks.ToString(CultureInfo.CurrentCulture) ?? _localization.Text("value.unknown"));
 
-        if (OnlineSpecsBox.IsChecked == true)
+        if (OnlineSpecsBox.IsChecked == true && !_suppressOnlineLookup)
         {
             _ = LookupOnlineSpecsAsync(monitor);
         }
@@ -367,9 +384,32 @@ public partial class MainWindow
         }
     }
 
-    private void RefreshButton_Click(object sender, RoutedEventArgs e)
+    private async void RefreshButton_Click(object sender, RoutedEventArgs e)
     {
-        RefreshMonitors();
+        RefreshButton.IsEnabled = false;
+        StatusText.Text = _localization.Text("status.refreshing");
+
+        try
+        {
+            CancelOnlineLookup();
+            _onlineSpecsService.ClearCache();
+            ManufacturerDatabase.Reload();
+            var count = RefreshMonitors(suppressOnlineLookup: true);
+
+            StatusText.Text = _localization.Format("status.refreshComplete", new Dictionary<string, string>
+            {
+                ["count"] = count.ToString(CultureInfo.CurrentCulture)
+            });
+
+            if (OnlineSpecsBox.IsChecked == true && MonitorList.SelectedItem is MonitorInfo monitor)
+            {
+                await LookupOnlineSpecsAsync(monitor, forceRefresh: true);
+            }
+        }
+        finally
+        {
+            RefreshButton.IsEnabled = true;
+        }
     }
 
     private void MonitorList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -404,7 +444,7 @@ public partial class MainWindow
         }
     }
 
-    private async Task LookupOnlineSpecsAsync(MonitorInfo monitor)
+    private async Task LookupOnlineSpecsAsync(MonitorInfo monitor, bool forceRefresh = false)
     {
         CancelOnlineLookup();
         _onlineLookupCancellation = new CancellationTokenSource();
@@ -417,7 +457,7 @@ public partial class MainWindow
         try
         {
             var identity = CreateIdentity(monitor);
-            var result = await _onlineSpecsService.SearchAsync(identity, token);
+            var result = await _onlineSpecsService.SearchAsync(identity, token, forceRefresh);
             if (token.IsCancellationRequested)
             {
                 return;
@@ -500,6 +540,25 @@ public partial class MainWindow
         {
             Clipboard.SetText(url);
         }
+    }
+
+    private static string GetApplicationVersion()
+    {
+        var informationalVersion = typeof(MainWindow).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+            .InformationalVersion;
+
+        if (!string.IsNullOrWhiteSpace(informationalVersion))
+        {
+            return informationalVersion.Split('+', StringSplitOptions.RemoveEmptyEntries)[0];
+        }
+
+        return typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
+    }
+
+    private void CheckUpdateLink_Click(object sender, RoutedEventArgs e)
+    {
+        OpenUrl(LatestReleaseUrl);
     }
 
     private void CopyRawButton_Click(object sender, RoutedEventArgs e)

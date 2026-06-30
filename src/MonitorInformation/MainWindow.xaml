@@ -445,9 +445,30 @@
             </Border>
         </Grid>
 
-        <TextBlock x:Name="StatusText"
-                   Grid.Row="2"
-                   Foreground="{DynamicResource TextSecondaryBrush}"
-                   Text="Ready" />
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock x:Name="StatusText"
+                       Grid.Column="0"
+                       HorizontalAlignment="Left"
+                       Foreground="{DynamicResource TextSecondaryBrush}"
+                       TextTrimming="CharacterEllipsis"
+                       Text="Ready" />
+            <StackPanel Grid.Column="1"
+                        Margin="16,0,0,0"
+                        HorizontalAlignment="Right"
+                        Orientation="Horizontal">
+                <TextBlock x:Name="VersionText"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
+                           Text="Version 0.0.0" />
+                <TextBlock Margin="12,0,0,0">
+                    <Hyperlink Click="CheckUpdateLink_Click">
+                        <Run x:Name="CheckUpdateRun" Text="Check for updates" />
+                    </Hyperlink>
+                </TextBlock>
+            </StackPanel>
+        </Grid>
     </Grid>
 </Window>

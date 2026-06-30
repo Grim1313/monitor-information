@@ -76,7 +76,7 @@ public sealed class LocalizationService
 
     private static Dictionary<string, string> LoadLanguage(string culture)
     {
-        var path = Path.Combine(AppContext.BaseDirectory, "resources", "i18n", $"{culture}.json");
+        var path = Path.Combine(AppContext.BaseDirectory, "resources", "languages", $"{culture}.json");
         if (!File.Exists(path))
         {
             return [];

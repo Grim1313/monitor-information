@@ -4,10 +4,10 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <AssemblyName>MonitorInformation</AssemblyName>
-    <Version>0.2.0</Version>
-    <AssemblyVersion>0.2.0.0</AssemblyVersion>
-    <FileVersion>0.2.0.0</FileVersion>
-    <InformationalVersion>0.2.0</InformationalVersion>
+    <Version>0.2.1</Version>
+    <AssemblyVersion>0.2.1.0</AssemblyVersion>
+    <FileVersion>0.2.1.0</FileVersion>
+    <InformationalVersion>0.2.1</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Authors>Monitor Information Contributors</Authors>
     <Description>Lightweight Windows monitor information viewer.</Description>
@@ -18,8 +18,18 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="resources\i18n\*.json" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\packaging\README-RUN.txt" Link="README-RUN.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+    <None Include="resources\languages\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="resources\manufacturers\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\packaging\README.txt" Link="README.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
   </ItemGroup>
+
+  <Target Name="RenameRuntimeMetadataFiles" AfterTargets="Publish">
+    <Move SourceFiles="$(PublishDir)$(AssemblyName).deps.json"
+          DestinationFiles="$(PublishDir)deps.json"
+          Condition="Exists('$(PublishDir)$(AssemblyName).deps.json')" />
+    <Move SourceFiles="$(PublishDir)$(AssemblyName).runtimeconfig.json"
+          DestinationFiles="$(PublishDir)config.json"
+          Condition="Exists('$(PublishDir)$(AssemblyName).runtimeconfig.json')" />
+  </Target>
 
 </Project>

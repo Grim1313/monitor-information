@@ -100,7 +100,7 @@ Recommended layout:
 
 ```text
 resources/
-  i18n/
+  languages/
     en-US.json
     ru-RU.json
     es-ES.json

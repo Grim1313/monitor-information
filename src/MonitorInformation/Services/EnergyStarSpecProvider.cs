@@ -41,7 +41,7 @@ public sealed class EnergyStarSpecProvider : ISpecProvider
     private static HttpClient CreateHttpClient()
     {
         var client = new HttpClient();
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("MonitorInformation/0.1.0 (+https://github.com/)");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("MonitorInformation/0.2.1 (+https://github.com/Grim1313/monitor-information)");
         return client;
     }
 

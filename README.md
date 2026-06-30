@@ -3,8 +3,6 @@
 Monitor Information is a lightweight open source Windows desktop application for
 viewing information about connected monitors.
 
-Current version: `0.2.0`.
-
 ## Features
 
 - Shows active displays detected by Windows.
@@ -35,48 +33,41 @@ Microsoft's runtime installation link before the app starts.
 
 ## Download And Run
 
-1. Download `MonitorInformation-0.2.0-win-x64.zip` from the GitHub Release.
+1. Download `MonitorInformation-0.2.1-win-x64.zip` from the GitHub Release.
 2. Extract the archive.
 3. Run `MonitorInformation.exe`.
 
 The app stores portable settings and online cache next to the executable when
 the folder is writable.
 
-## Version 0.2.0
+## Smart App Control
 
-What's new:
+The application is currently unsigned. Windows 11 Smart App Control may block
+unsigned apps downloaded from the Internet, especially on first releases with no
+publisher reputation.
 
-- Improved monitor detection, including better EDID matching from Windows.
-- Added optional online specs lookup for monitor and laptop panel models.
-- Improved laptop display support.
-- Refined light and dark themes.
-- Prepared automated GitHub release builds.
+Do not disable Smart App Control only for this app unless you understand the
+risk. A proper fix requires a trusted code-signing certificate for release
+binaries.
 
-Not implemented yet:
+## Localization
 
-- EPREL provider.
-- Manufacturer-specific online providers.
-- Full UEFI PNP vendor catalog generator.
-- DisplayID and CTA extension decoding beyond base EDID metadata.
-- Signed installer or auto-update.
+Interface strings are stored as JSON files in:
 
-## GitHub Releases
+```text
+src/MonitorInformation/resources/languages/
+```
 
-Release builds are produced by GitHub Actions from tags named `v*.*.*`.
+To edit an existing language, update the matching file, for example
+`ru-RU.json`.
 
-The workflow builds a compact framework-dependent Windows x64 archive:
+To add a language:
 
-- `MonitorInformation-<version>-win-x64.zip`
-
-Code signing is optional. If these repository secrets are configured, the
-workflow signs `MonitorInformation.exe` and `MonitorInformation.dll` before
-creating the archive:
-
-- `WINDOWS_SIGNING_CERT_BASE64` - base64-encoded PFX certificate.
-- `WINDOWS_SIGNING_CERT_PASSWORD` - PFX password.
-
-Without a trusted code-signing certificate, Windows 11 Smart App Control may
-block the app on some PCs.
+1. Copy `en-US.json` to a new culture file, for example `de-DE.json`.
+2. Translate values, keeping keys unchanged.
+3. Add the culture code to `SupportedCultures` in
+   `src/MonitorInformation/Services/LocalizationService.cs`.
+4. Add a localized `lang.<culture>` display name to each language file.
 
 ## Build From Source
 
@@ -94,13 +85,13 @@ dotnet build MonitorInformation.slnx -c Release
 Publish a compact framework-dependent x64 build:
 
 ```powershell
-dotnet publish src\MonitorInformation\MonitorInformation.csproj -c Release -r win-x64 --self-contained false -o dist\MonitorInformation-0.2.0-win-x64
+dotnet publish src\MonitorInformation\MonitorInformation.csproj -c Release -r win-x64 --self-contained false -o dist\MonitorInformation-0.2.1-win-x64
 ```
 
 Create the release archive:
 
 ```powershell
-Compress-Archive -Path dist\MonitorInformation-0.2.0-win-x64\* -DestinationPath dist\MonitorInformation-0.2.0-win-x64.zip -Force
+Compress-Archive -Path dist\MonitorInformation-0.2.1-win-x64\* -DestinationPath dist\MonitorInformation-0.2.1-win-x64.zip -Force
 ```
 
 ## Architecture
